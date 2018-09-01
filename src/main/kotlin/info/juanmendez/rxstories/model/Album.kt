@@ -1,4 +1,3 @@
 package info.juanmendez.rxstories.model
 
-class Album {
-}
+data class Album (val name: String, val year: Int, val bandId: Int)

@@ -1,4 +1,3 @@
 package info.juanmendez.rxstories.model
 
-class Song {
-}
+data class Song (val name: String, val length: String, val songId: Int)

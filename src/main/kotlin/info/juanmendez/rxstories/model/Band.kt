@@ -1,3 +1,3 @@
 package info.juanmendez.rxstories.model
 
-class Band
+data class Band (val name: String, val bandId: Int)

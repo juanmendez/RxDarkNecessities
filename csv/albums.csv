@@ -1,0 +1,8 @@
+album_id,band_id,name,year,url
+1,2,The Gateway,2016,https://en.wikipedia.org/wiki/The_Getaway_(Red_Hot_Chili_Peppers_album)
+2,1,Appetite for Destruction,1987,https://en.wikipedia.org/wiki/Appetite_for_Destruction
+3,7,...And Justce for All,1988,https://en.wikipedia.org/wiki/...And_Justice_for_All_(album)
+4,1,Use Your Illusion II,1990,https://en.wikipedia.org/wiki/Use_Your_Illusion_II
+5,3,Ramones,1976,https://en.wikipedia.org/wiki/Ramones_(album)
+6,5,Saints of Los Angeles,2008,https://en.wikipedia.org/wiki/Saints_of_Los_Angeles
+7,6,Rage Against the Machine,1992,https://en.wikipedia.org/wiki/Rage_Against_the_Machine_(album)
