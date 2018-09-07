@@ -25,10 +25,12 @@ class LoadingBandsTest {
 
         single.subscribe(testObserver)
 
-        //assert it has completed, and there are 7 bands..
+
         testObserver.assertSubscribed()
         testObserver.assertComplete()
-        testObserver.assertOf {it.valueCount() == 7 }
+        testObserver.assertValue {
+            it.size == 7
+        }
     }
 
     @Test
@@ -49,16 +51,18 @@ class LoadingBandsTest {
 
         single.subscribe(testObserver)
 
-        //assert it has completed, and there are 7 bands..
         testObserver.assertSubscribed()
         testObserver.assertComplete()
-        testObserver.assertOf {it.valueCount() == 7 }
+
+        testObserver.assertValue {
+            it.size == 7
+        }
     }
 
     @Test
     fun `loadingSongs`() {
         val testObserver = TestObserver<List<Song>>()
-
+        
         //lets load up with a single
         val single = Single.create<List<Song>> {
             val file = File("csv/songs.csv")
@@ -76,5 +80,9 @@ class LoadingBandsTest {
         //assert it has completed, and there are 7 bands..
         testObserver.assertSubscribed()
         testObserver.assertComplete()
+
+        testObserver.assertValue {
+            it.size.equals(76)
+        }
     }
 }
