@@ -13,14 +13,14 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 class LoadingBandsTest {
-    val totalSongs = 76
+    private val totalSongs = 76
 
     @Test
-    fun `loadingBands`() {
+    fun loadingBands() {
         val testObserver = TestObserver<List<Band>>()
 
         //lets load up with a single
-        val single = Single.create<List<Band>> {
+        val single = Single.create<List<Band>> { emitter ->
             val file = File("csv/bands.csv")
 
             val bands: List<Band> = file.readLines().drop(1)
@@ -28,7 +28,7 @@ class LoadingBandsTest {
                     .map {
                         Band(it[0].toInt(), it[1])
                     }
-            it.onSuccess(bands)
+            emitter.onSuccess(bands)
         }
 
         single.subscribe(testObserver)
@@ -42,11 +42,11 @@ class LoadingBandsTest {
     }
 
     @Test
-    fun `loadingAlbums`() {
+    fun loadingAlbums() {
         val testObserver = TestObserver<List<Album>>()
 
         //lets load up with a single
-        val single = Single.create<List<Album>> {
+        val single = Single.create<List<Album>> { emitter ->
             val file = File("csv/albums.csv")
 
             val albums: List<Album> = file.readLines().drop(1)
@@ -54,7 +54,7 @@ class LoadingBandsTest {
                     .map {
                         Album(it[0].toInt(), it[1].toInt(), it[2], it[3].toInt(), it[4])
                     }
-            it.onSuccess(albums)
+            emitter.onSuccess(albums)
         }
 
         single.subscribe(testObserver)
@@ -68,7 +68,7 @@ class LoadingBandsTest {
     }
 
     @Test
-    fun `loadingSongs`() {
+    fun loadingSongs() {
         val testObserver = TestObserver<List<Song>>()
 
         //lets load up with a single
@@ -96,7 +96,7 @@ class LoadingBandsTest {
 
     /**
      * Curiosity made me wonder about SchedulerTest
-     * @see https://stackoverflow.com/questions/26699147/how-to-use-testscheduler-in-rxjava
+     * @see stackoverflow.com/questions/26699147/how-to-use-testscheduler-in-rxjava
      */
     @Test
     fun `test with TestScheduler`() {
@@ -134,8 +134,8 @@ class LoadingBandsTest {
 
     fun getSongsByRange(start: Int, end: Int): List<Song> {
         val file = File("csv/songs.csv")
-        var startsAt = start
-        var endsAt = end
+        var startsAt: Int
+        var endsAt: Int
 
         var songs: MutableList<Song> = file.readLines().drop(1)
                 .map { it.split(",") }
@@ -144,7 +144,7 @@ class LoadingBandsTest {
                 }.toMutableList()
 
         //TODO make use of transformations to move the following logic to the chain of methods above
-        endsAt = Math.min(end, songs.size - 1)
+        endsAt = Math.min(end, songs.size)
         startsAt = Math.min(start, endsAt)
 
         if (endsAt == startsAt) {
@@ -166,7 +166,7 @@ class LoadingBandsTest {
         songs = getSongsByRange(70, 77)
 
         //there are only 76 songs
-        Assert.assertTrue(songs.size == 5)
+        Assert.assertTrue(songs.size == 6)
     }
 
     @Test
@@ -186,31 +186,34 @@ class LoadingBandsTest {
 
     @Test
     fun `use a Flowable to spit 10 songs per second using TestScheduler`() {
+
         val testSubscriber = TestSubscriber<List<Song>>()
         val testScheduler = TestScheduler()
         val setUnit = 10
 
-        var set = 0
-        val songFlowable = Flowable.create<List<Song>>({ emitter ->
-            emitter.onNext(getSongsByRange(set * setUnit, (set + 1 ) * setUnit))
-            set++
-        }, BackpressureStrategy.BUFFER)
-                .delay(1, TimeUnit.SECONDS)
+        Flowable.intervalRange(0, 8, 0, 1, TimeUnit.SECONDS, testScheduler)
+                .map {
+                    val set = it.toInt()
+                    val listSongs = getSongsByRange(set * setUnit, (set + 1) * setUnit)
+                    listSongs
+                }.subscribe(testSubscriber)
 
 
-
-
-
-        songFlowable.subscribe(testSubscriber)
-
-        val songsCollected = mutableListOf<Song>()
-        for (i in 1..8) {
-
-            testSubscriber.assertValue {
-                songsCollected.addAll(it)
-                songsCollected.size == Math.min(i * setUnit, totalSongs)
-            }
+        /**
+         * every emit received by testSubscriber is added to its list of emits List<List<Song>>
+         */
+        for (i in 0..7) {
             testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+
+            testSubscriber.assertOf { subscriber ->
+                subscriber.assertValueAt(i) {
+                    if (i == 7) {
+                        it.size == 6
+                    } else {
+                        it.size == 10
+                    }
+                }
+            }
         }
     }
 }
