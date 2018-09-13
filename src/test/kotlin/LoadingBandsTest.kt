@@ -1,3 +1,4 @@
+import com.jakewharton.rxrelay2.ReplayRelay
 import info.juanmendez.rxstories.model.Album
 import info.juanmendez.rxstories.model.Band
 import info.juanmendez.rxstories.model.Song
@@ -94,44 +95,6 @@ class LoadingBandsTest {
         }
     }
 
-    /**
-     * Curiosity made me wonder about SchedulerTest
-     * @see stackoverflow.com/questions/26699147/how-to-use-testscheduler-in-rxjava
-     */
-    @Test
-    fun `test with TestScheduler`() {
-
-        val testScheduler = TestScheduler()
-        val testObserver = TestObserver<List<Song>>()
-        val single = Single.create<List<Song>> {
-            val file = File("csv/songs.csv")
-
-            val songs: List<Song> = file.readLines().drop(1)
-                    .map { it.split(",") }
-                    .map {
-                        Song(it[0].toInt(), it[1], it[2], it[3].toInt(), it[4].toInt())
-                    }
-            it.onSuccess(songs)
-        }
-
-        //we delay 5 seconds to complete
-        single.timeout(5, TimeUnit.SECONDS).observeOn(testScheduler).subscribe(testObserver)
-
-        //at 0 seconds
-        testObserver.assertNotComplete()
-        testObserver.assertValue {
-            it.isEmpty()
-        }
-
-
-        //at 6 seconds
-        testScheduler.advanceTimeBy(6, TimeUnit.SECONDS)
-        testObserver.assertComplete()
-        testObserver.assertValue {
-            it.size == totalSongs
-        }
-    }
-
     fun getSongsByRange(start: Int, end: Int): List<Song> {
         val file = File("csv/songs.csv")
         var startsAt: Int
@@ -143,7 +106,9 @@ class LoadingBandsTest {
                     Song(it[0].toInt(), it[1], it[2], it[3].toInt(), it[4].toInt())
                 }.toMutableList()
 
-        //TODO make use of transformations to move the following logic to the chain of methods above
+        if(start >= songs.size || end >= songs.size)
+            throw IndexOutOfBoundsException()
+
         endsAt = Math.min(end, songs.size)
         startsAt = Math.min(start, endsAt)
 
@@ -156,64 +121,28 @@ class LoadingBandsTest {
         return songs
     }
 
-
     @Test
-    fun `emit 10 songs per second using getSongsByRange`() {
-        //test songs by range, don't go too fast my friend
-        var songs = getSongsByRange(80, 90)
-        Assert.assertTrue(songs.isEmpty())
+    fun `using RxRelay for the first time`() {
+        val testSubscriber = TestObserver<List<Song>>()
 
-        songs = getSongsByRange(70, 77)
+        val relay = ReplayRelay.create<List<Song>>()
 
-        //there are only 76 songs
-        Assert.assertTrue(songs.size == 6)
-    }
-
-    @Test
-    fun `use a Flowable emitter to spit 10 songs`() {
-        val testSubscriber = TestSubscriber<List<Song>>()
-
-        val songFlowable = Flowable.create<List<Song>>({ emitter ->
-            emitter.onNext(getSongsByRange(0, 10))
-        }, BackpressureStrategy.BUFFER)
-
-        songFlowable.subscribe(testSubscriber)
-
-        testSubscriber.assertValue {
-            it.size == 10
+        relay.onErrorReturn {
+            listOf()
         }
-    }
 
-    @Test
-    fun `use a Flowable to spit 10 songs per second using TestScheduler`() {
+        relay.accept(getSongsByRange(0, 10))
+        relay.accept(getSongsByRange(10, 20))
+        relay.accept(getSongsByRange(30, 40))
+        relay.subscribe(testSubscriber)
 
-        val testSubscriber = TestSubscriber<List<Song>>()
-        val testScheduler = TestScheduler()
-        val setUnit = 10
-
-        Flowable.intervalRange(0, 8, 0, 1, TimeUnit.SECONDS, testScheduler)
-                .map {
-                    val set = it.toInt()
-                    val listSongs = getSongsByRange(set * setUnit, (set + 1) * setUnit)
-                    listSongs
-                }.subscribe(testSubscriber)
-
-
-        /**
-         * every emit received by testSubscriber is added to its list of emits List<List<Song>>
-         */
-        for (i in 0..7) {
-            testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
-
-            testSubscriber.assertOf { subscriber ->
-                subscriber.assertValueAt(i) {
-                    if (i == 7) {
-                        it.size == 6
-                    } else {
-                        it.size == 10
-                    }
-                }
-            }
+        testSubscriber.assertOf {
+            it.valueCount() == 3
         }
+
+        relay.accept(getSongsByRange(80,90))
+        testSubscriber.assertValueAt(3, {
+            it.isEmpty()
+        })
     }
 }
