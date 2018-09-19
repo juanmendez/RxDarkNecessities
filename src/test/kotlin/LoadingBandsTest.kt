@@ -6,6 +6,7 @@ import io.reactivex.Flowable
 import io.reactivex.Single
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.TestScheduler
+import io.reactivex.subjects.PublishSubject
 import io.reactivex.subscribers.TestSubscriber
 import org.junit.Assert
 import org.junit.Test
@@ -215,5 +216,72 @@ class LoadingBandsTest {
                 }
             }
         }
+    }
+
+
+    @Test
+    fun `get songs every five seconds`() {
+
+        val songSubject = PublishSubject.create<List<Song>>()
+        val testSubscriber = TestObserver<List<Song>>()
+        val testScheduler = TestScheduler()
+
+        val observable = songSubject.throttleFirst(5, TimeUnit.SECONDS)
+
+        observable.subscribe(testSubscriber)
+
+        //click every second
+        songSubject.onNext(getSongsByRange(0, 10))
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+
+        songSubject.onNext(getSongsByRange(0, 10))
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+
+        songSubject.onNext(getSongsByRange(0, 10))
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+
+        songSubject.onNext(getSongsByRange(0, 10))
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+
+        testSubscriber.assertValueCount(1)
+    }
+
+
+    @Test
+    fun `enforce to request songs every five seconds`() {
+        /**
+         * user is eager to get songs and clicks several times
+         *  to pull the data, so this throttle enforces to execute only once
+         */
+
+        val songSubject = PublishSubject.create<List<Song>>()
+        val requestSubject = PublishSubject.create<List<Int>>()
+
+        val testSubscriber = TestObserver<List<Song>>()
+        val testScheduler = TestScheduler()
+
+        val requestSongs = { start: Int, end: Int ->
+            requestSubject.onNext(listOf(start, end))
+        }
+
+        requestSubject.throttleFirst(5, TimeUnit.SECONDS).subscribe {
+            if (it.size == 2) {
+                songSubject.onNext(getSongsByRange(it[0], it[1]))
+            }
+        }
+
+        songSubject.subscribe(testSubscriber)
+
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+        requestSongs(0, 10)
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+        requestSongs(10, 20)
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+        requestSongs(30, 40)
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+        requestSongs(50, 60)
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+
+        testSubscriber.assertValueCount(1)
     }
 }
