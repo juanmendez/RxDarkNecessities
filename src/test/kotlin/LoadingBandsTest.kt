@@ -1,3 +1,4 @@
+import com.jakewharton.rxrelay2.PublishRelay
 import info.juanmendez.rxstories.model.Album
 import info.juanmendez.rxstories.model.Band
 import info.juanmendez.rxstories.model.Song
@@ -281,6 +282,34 @@ class LoadingBandsTest {
         testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
         requestSongs(50, 60)
         testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+
+        testSubscriber.assertValueCount(1)
+    }
+
+
+    @Test
+    fun `using debounce`() {
+        val songSubject = PublishSubject.timer(5, TimeUnit.SECONDS).timeInterval()
+
+        val testSubscriber = TestObserver<List<Song>>()
+        val testScheduler = TestScheduler()
+
+        val requestSongs = { start: Int, end: Int ->
+           songSubject.map {
+               getSongsByRange(start, end)
+           }
+        }
+
+
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+        requestSongs(0, 10)
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+        requestSongs(10, 20)
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+        requestSongs(30, 40)
+        testScheduler.advanceTimeBy(1, TimeUnit.SECONDS)
+        requestSongs(50, 60)
+        testScheduler.advanceTimeBy(2, TimeUnit.SECONDS)
 
         testSubscriber.assertValueCount(1)
     }
