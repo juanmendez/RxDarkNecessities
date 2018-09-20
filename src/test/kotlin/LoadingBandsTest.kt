@@ -2,16 +2,10 @@ import com.jakewharton.rxrelay2.ReplayRelay
 import info.juanmendez.rxstories.model.Album
 import info.juanmendez.rxstories.model.Band
 import info.juanmendez.rxstories.model.Song
-import io.reactivex.BackpressureStrategy
-import io.reactivex.Flowable
 import io.reactivex.Single
 import io.reactivex.observers.TestObserver
-import io.reactivex.schedulers.TestScheduler
-import io.reactivex.subscribers.TestSubscriber
-import org.junit.Assert
 import org.junit.Test
 import java.io.File
-import java.util.concurrent.TimeUnit
 
 class LoadingBandsTest {
     private val totalSongs = 76
@@ -106,19 +100,15 @@ class LoadingBandsTest {
                     Song(it[0].toInt(), it[1], it[2], it[3].toInt(), it[4].toInt())
                 }.toMutableList()
 
-        if(start >= songs.size || end >= songs.size)
-            throw IndexOutOfBoundsException()
-
         endsAt = Math.min(end, songs.size)
         startsAt = Math.min(start, endsAt)
 
-        if (endsAt == startsAt) {
-            songs.clear()
-        } else {
-            songs = songs.subList(startsAt, endsAt)
+        //this was intended, just to test handling an exception
+        if (start >= songs.size || end >= songs.size) {
+            throw IndexOutOfBoundsException()
         }
 
-        return songs
+        return songs.subList(startsAt, endsAt)
     }
 
     @Test
@@ -127,22 +117,36 @@ class LoadingBandsTest {
 
         val relay = ReplayRelay.create<List<Song>>()
 
-        relay.onErrorReturn {
-            listOf()
+        /**
+         * How Single can be used as a proxy to track and error
+         * and for our relay to define its response from the error
+         */
+        val requestSongsByRange = fun(start: Int, end: Int) {
+            Single.create<List<Song>> {
+                try {
+                    it.onSuccess(getSongsByRange(start, end))
+                } catch (e: Exception) {
+                    it.onError(e)
+                }
+            }.subscribe({
+                relay.accept(it)
+            }, {
+                relay.accept(listOf())
+            })
         }
 
-        relay.accept(getSongsByRange(0, 10))
-        relay.accept(getSongsByRange(10, 20))
-        relay.accept(getSongsByRange(30, 40))
+        requestSongsByRange(0, 10)
+        requestSongsByRange(10, 20)
+        requestSongsByRange(30, 40)
         relay.subscribe(testSubscriber)
 
         testSubscriber.assertOf {
-            it.valueCount() == 3
+            it.valueCount().equals(3)
         }
 
-        relay.accept(getSongsByRange(80,90))
-        testSubscriber.assertValueAt(3, {
+        requestSongsByRange(80, 90)
+        testSubscriber.assertValueAt(3) {
             it.isEmpty()
-        })
+        }
     }
 }
