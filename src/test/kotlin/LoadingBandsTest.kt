@@ -5,7 +5,6 @@ import info.juanmendez.rxstories.model.Song
 import io.reactivex.Single
 import io.reactivex.observers.TestObserver
 import org.junit.Test
-import java.io.File
 
 class LoadingBandsTest {
     private val totalSongs = 76
@@ -16,13 +15,7 @@ class LoadingBandsTest {
 
         //lets load up with a single
         val single = Single.create<List<Band>> { emitter ->
-            val file = File("csv/bands.csv")
-
-            val bands: List<Band> = file.readLines().drop(1)
-                    .map { it.split(",") }
-                    .map {
-                        Band(it[0].toInt(), it[1])
-                    }
+            val bands: List<Band> = API.getBands()
             emitter.onSuccess(bands)
         }
 
@@ -42,13 +35,7 @@ class LoadingBandsTest {
 
         //lets load up with a single
         val single = Single.create<List<Album>> { emitter ->
-            val file = File("csv/albums.csv")
-
-            val albums: List<Album> = file.readLines().drop(1)
-                    .map { it.split(",") }
-                    .map {
-                        Album(it[0].toInt(), it[1].toInt(), it[2], it[3].toInt(), it[4])
-                    }
+            val albums: List<Album> = API.getAlbums()
             emitter.onSuccess(albums)
         }
 
@@ -68,13 +55,7 @@ class LoadingBandsTest {
 
         //lets load up with a single
         val single = Single.create<List<Song>> {
-            val file = File("csv/songs.csv")
-
-            val songs: List<Song> = file.readLines().drop(1)
-                    .map { it.split(",") }
-                    .map {
-                        Song(it[0].toInt(), it[1], it[2], it[3].toInt(), it[4].toInt())
-                    }
+            val songs: List<Song> = API.getSongs()
             it.onSuccess(songs)
         }
 
@@ -90,15 +71,10 @@ class LoadingBandsTest {
     }
 
     fun getSongsByRange(start: Int, end: Int): List<Song> {
-        val file = File("csv/songs.csv")
         var startsAt: Int
         var endsAt: Int
 
-        var songs: MutableList<Song> = file.readLines().drop(1)
-                .map { it.split(",") }
-                .map {
-                    Song(it[0].toInt(), it[1], it[2], it[3].toInt(), it[4].toInt())
-                }.toMutableList()
+        var songs = API.getSongs().toMutableList()
 
         endsAt = Math.min(end, songs.size)
         startsAt = Math.min(start, endsAt)
