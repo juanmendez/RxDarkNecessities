@@ -15,12 +15,10 @@ class LoadingBandsTest {
 
         //lets load up with a single
         val single = Single.create<List<Band>> { emitter ->
-            val bands: List<Band> = API.getBands()
-            emitter.onSuccess(bands)
+            emitter.onSuccess(API.getBands())
         }
 
         single.subscribe(testObserver)
-
 
         testObserver.assertSubscribed()
         testObserver.assertComplete()
@@ -35,8 +33,7 @@ class LoadingBandsTest {
 
         //lets load up with a single
         val single = Single.create<List<Album>> { emitter ->
-            val albums: List<Album> = API.getAlbums()
-            emitter.onSuccess(albums)
+            emitter.onSuccess(API.getAlbums())
         }
 
         single.subscribe(testObserver)
@@ -55,8 +52,7 @@ class LoadingBandsTest {
 
         //lets load up with a single
         val single = Single.create<List<Song>> {
-            val songs: List<Song> = API.getSongs()
-            it.onSuccess(songs)
+            it.onSuccess(API.getSongs())
         }
 
         single.subscribe(testObserver)
@@ -71,13 +67,9 @@ class LoadingBandsTest {
     }
 
     fun getSongsByRange(start: Int, end: Int): List<Song> {
-        var startsAt: Int
-        var endsAt: Int
-
-        var songs = API.getSongs().toMutableList()
-
-        endsAt = Math.min(end, songs.size)
-        startsAt = Math.min(start, endsAt)
+        val songs = API.getSongs().toMutableList()
+        val endsAt: Int = Math.min(end, songs.size)
+        val startsAt: Int = Math.min(start, endsAt)
 
         //this was intended, just to test handling an exception
         if (start >= songs.size || end >= songs.size) {
