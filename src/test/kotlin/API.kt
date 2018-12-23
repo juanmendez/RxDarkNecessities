@@ -34,5 +34,18 @@ class API {
                         Song(it[0].toInt(), it[1], it[2], it[3].toInt(), it[4].toInt())
                     }
         }
+
+        fun getSongsByRange(start: Int, end: Int): List<Song> {
+            val songs = API.getSongs().toMutableList()
+            val endsAt: Int = Math.min(end, songs.size)
+            val startsAt: Int = Math.min(start, endsAt)
+
+            //this was intended, just to test handling an exception
+            if (start >= songs.size || end >= songs.size) {
+                throw IndexOutOfBoundsException()
+            }
+
+            return songs.subList(startsAt, endsAt)
+        }
     }
 }

@@ -66,19 +66,6 @@ class LoadingBandsTest {
         }
     }
 
-    fun getSongsByRange(start: Int, end: Int): List<Song> {
-        val songs = API.getSongs().toMutableList()
-        val endsAt: Int = Math.min(end, songs.size)
-        val startsAt: Int = Math.min(start, endsAt)
-
-        //this was intended, just to test handling an exception
-        if (start >= songs.size || end >= songs.size) {
-            throw IndexOutOfBoundsException()
-        }
-
-        return songs.subList(startsAt, endsAt)
-    }
-
     @Test
     fun `using RxRelay for the first time`() {
         val testSubscriber = TestObserver<List<Song>>()
@@ -92,7 +79,7 @@ class LoadingBandsTest {
         val requestSongsByRange = fun(start: Int, end: Int) {
             Single.create<List<Song>> {
                 try {
-                    it.onSuccess(getSongsByRange(start, end))
+                    it.onSuccess(API.getSongsByRange(start, end))
                 } catch (e: Exception) {
                     it.onError(e)
                 }
