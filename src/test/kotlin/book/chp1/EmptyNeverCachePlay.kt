@@ -54,13 +54,13 @@ class WorkWithEmptyNever {
     @Test
     fun `test observable works multiple times per subscription`() {
         var timesParsingSongs = 0
-        val songObserver = Single.create<List<Song>> {
+        val songObservable = Single.create<List<Song>> {
             timesParsingSongs++
             it.onSuccess(API.getSongs())
         }
 
-        songObserver.subscribe(testObserver)
-        songObserver.subscribe({}, {})
+        songObservable.subscribe(testObserver)
+        songObservable.subscribe({}, {})
         Assert.assertEquals(timesParsingSongs, 2)
     }
 
