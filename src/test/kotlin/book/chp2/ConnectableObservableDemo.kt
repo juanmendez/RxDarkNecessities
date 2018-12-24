@@ -73,4 +73,17 @@ class ConnectableObservableDemo {
         assertTrue(lateSubscriber.isDisposed)
         assertFalse(composite.size() > 0)
     }
+
+
+    @Test
+    fun `test Defer over Just, cold wrapping hot`() {
+        val lateSubscriber = TestObserver<List<Song>>()
+        var songs : List<Song> = listOf()
+
+        Observable.just(API.getSongs())
+
+        Observable.defer {
+            Observable.just(API.getSongs())
+        }.subscribe(testSubscriber)
+    }
 }
