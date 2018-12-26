@@ -90,6 +90,38 @@ class TransformationTest {
         songsT.assertValueAt(0) { it.isNotEmpty() }
     }
 
+    @Test
+    fun `lets turn songsO into a returned observable`() {
+        var songsO = getBandSongs("Guns n’ Roses")
+        var songsT = songsO.test()
+
+        songsT.assertComplete()
+        songsT.assertValueCount(1)
+        songsT.assertValueAt(0) { it.isNotEmpty() }
+
+
+        songsO = getBandSongs("")
+        songsT = songsO.test()
+        songsT.assertComplete()
+        songsT.assertValueAt(0) { it.isEmpty() }
+    }
+
+    private fun getBandSongs(bandName: String): Single<List<Song>> {
+        return getBands()
+                .flatMap {
+                    getBandsByName(it, bandName)
+                }.flatMap { filteredBands ->
+                    if (filteredBands.isNotEmpty()) {
+                        getSongsObservable().flatMap {
+                            getSongsByBand(it, filteredBands[0])
+                        }
+                    } else {
+                        Single.just(listOf<Song>())
+                    }
+                }
+
+    }
+
     private fun getBands(): Single<List<Band>> {
 
         return Single.create<List<Band>> {
