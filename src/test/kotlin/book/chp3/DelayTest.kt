@@ -13,6 +13,29 @@ import java.util.concurrent.TimeUnit
  * hint we have delay, and timer
  */
 class DelayTest {
+    private val time: Long = 10L
+
+    @Test
+    fun `applying timer`() {
+        val scheduler = TestScheduler()
+
+        val timeO = Observable.timer(10, TimeUnit.MILLISECONDS, scheduler)
+        val songO = getSongsByRange(0, 10)
+        val timeSongO = timeO.flatMap { songO.toObservable() }
+
+        val timeSongT = timeSongO.test()
+        timeSongT.assertValueCount(0)
+
+        /**
+         * delay precedes in first observable and then flatMap modifies
+         * into observables which emit, and are merged (which happens within)
+         * for subscriber
+         */
+        scheduler.advanceTimeBy(10, TimeUnit.MILLISECONDS)
+        timeSongT.assertValueCount(1)
+        timeSongT.assertValueAt(0) { it.size == 10 }
+        timeSongT.assertComplete()
+    }
 
     @Test
     fun `apply delay operator`() {
@@ -42,30 +65,99 @@ class DelayTest {
     }
 
     @Test
-    fun `apply timer instead`() {
+    fun `emit reverse order using flatMap and delay`() {
         /**
-         * timer is similar except it is an observable which doesn't emit the
-         * same value from a previous chained observable.
-         * That's why we write it here first, instead of the way we used delay
+         * According to the book FlatMap uses merging of observables generated
+         * as a single subscription. We are going to take a look at how
+         * applying delay to each song changes the order from first to last
+         * when subscribed
          */
         val scheduler = TestScheduler()
+        var songIndex = 0
         val songO = getSongsByRange(0, 10)
-        val timeO = Observable.timer(10, TimeUnit.MILLISECONDS, scheduler)
+                .toObservable()
+                .flatMapIterable { it }
+                .sorted { prev, next ->
+                    //ensure songs are sorted by their id!
+                    when {
+                        prev.songId < next.songId -> -1
+                        prev.songId > next.songId -> 1
+                        else -> 0
+                    }
+                }
+                .flatMap { song ->
+                    val delay = calculateDelay(songIndex++, 10)
+                    getSongObservable(song, delay, scheduler)
+                }
 
-        val timeSongO = timeO.flatMap { songO.toObservable() }
+        val songT = songO.test()
 
-        val timeSongT = timeSongO.test()
-        timeSongT.assertValueCount(0)
+        //songs are delayed, and emitted in the reverse order from last to first
+        for (i in 0..9) {
+            scheduler.advanceTimeBy((i + 1) * time, TimeUnit.MILLISECONDS)
 
-        scheduler.advanceTimeBy(10, TimeUnit.MILLISECONDS)
-        timeSongT.assertValueCount(1)
-        timeSongT.assertComplete()
-
-        //TODO find how to emit each song every 10ms.
+            //we can test
+            songT.assertValueAt(i) { it.songId == 10 - i }
+        }
     }
 
+    @Test
+    fun `emit reverse order using concat and delay`() {
+        val scheduler = TestScheduler()
+        var songIndex = 0
+        var timeToLoadThemAll = 0L
+        var delay = 0L
+
+        val songO = getSongsByRange(0, 10)
+                .toObservable()
+                .flatMapIterable { it }
+                .sorted { prev, next ->
+                    //ensure songs are sorted by their id!
+                    when {
+                        prev.songId < next.songId -> -1
+                        prev.songId > next.songId -> 1
+                        else -> 0
+                    }
+                }
+                .doOnNext {
+                    //good spot to do calculations while emitting each element
+                    delay = calculateDelay(songIndex++, 10)
+                    timeToLoadThemAll += delay
+                }
+                .concatMap { song ->
+                    //lines within doOnNext moved here would make the test to fail
+                    getSongObservable(song, delay, scheduler)
+                }
+
+        val songT = songO.test()
+
+        scheduler.advanceTimeBy(100, TimeUnit.MILLISECONDS)
+
+        //we can test
+        songT.assertValueAt(0) { it.songId == 1 }
+
+        scheduler.advanceTimeTo(timeToLoadThemAll, TimeUnit.MILLISECONDS)
+        songT.assertValueCount(10)
+    }
+
+    private fun calculateDelay(position: Int, total: Int): Long {
+        return (total - position) * time
+    }
 
     private fun getSongsByRange(start: Int, end: Int): Single<List<Song>> {
         return Single.just(API.getSongsByRange(start, end))
+    }
+
+    private fun getSongObservable(song: Song, time: Long, scheduler: TestScheduler): Observable<Song> {
+
+        return Observable
+                .timer(
+                        time,
+                        TimeUnit.MILLISECONDS,
+                        scheduler
+                )
+                .map {
+                    song
+                }
     }
 }

@@ -40,11 +40,6 @@ class API {
             val endsAt: Int = Math.min(end, songs.size)
             val startsAt: Int = Math.min(start, endsAt)
 
-            //this was intended, just to test handling an exception
-            if (start >= songs.size || end >= songs.size) {
-                throw IndexOutOfBoundsException()
-            }
-
             return songs.subList(startsAt, endsAt)
         }
     }

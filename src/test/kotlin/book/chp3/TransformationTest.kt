@@ -1,9 +1,7 @@
 package book.chp3
 
-import API
 import info.juanmendez.rxstories.model.Band
 import info.juanmendez.rxstories.model.Song
-import io.reactivex.Observable
 import io.reactivex.Single
 import org.junit.Test
 import java.io.File
@@ -36,7 +34,7 @@ class TransformationTest {
     @Test
     fun `lets use flat-map with observables`() {
 
-        val bandsO = getBands()
+        val bandsO = SongUtil.getBands()
         val bandsT = bandsO.test()
         bandsT.assertComplete()
         bandsT.assertValueAt(0) { it.isNotEmpty() }
@@ -44,7 +42,7 @@ class TransformationTest {
         val favBandName = "Guns n’ Roses"
         val favBandT = bandsO
                 .flatMap {
-                    getBandsByName(it, favBandName)
+                    SongUtil.getBandsByName(it, favBandName)
                 }.test()
 
         favBandT.assertComplete()
@@ -53,12 +51,12 @@ class TransformationTest {
 
         val yourBand = favBandT.values()[0][0]
 
-        val songsO = getSongsObservable()
+        val songsO = SongUtil.getSongsObservable()
         val songsT = songsO.test()
         songsT.assertComplete()
 
         val favSongsO = songsO.flatMap {
-            getSongsByBand(it, yourBand)
+            SongUtil.getSongsByBand(it, yourBand)
         }
 
         val favSongsT = favSongsO.test()
@@ -70,13 +68,13 @@ class TransformationTest {
     fun `lets combine all observables to get songs`() {
         val favBandName = "Guns n’ Roses"
 
-        val songsO = getBands()
+        val songsO = SongUtil.getBands()
                 .flatMap {
-                    getBandsByName(it, favBandName)
+                    SongUtil.getBandsByName(it, favBandName)
                 }.flatMap { filteredBands ->
                     if (filteredBands.isNotEmpty()) {
-                        getSongsObservable().flatMap {
-                            getSongsByBand(it, filteredBands[0])
+                        SongUtil.getSongsObservable().flatMap {
+                            SongUtil.getSongsByBand(it, filteredBands[0])
                         }
                     } else {
                         Single.just(listOf<Song>())
@@ -92,7 +90,7 @@ class TransformationTest {
 
     @Test
     fun `lets turn songsO into a returned observable`() {
-        var songsO = getBandSongs("Guns n’ Roses")
+        var songsO = SongUtil.getBandSongs("Guns n’ Roses")
         var songsT = songsO.test()
 
         songsT.assertComplete()
@@ -100,55 +98,9 @@ class TransformationTest {
         songsT.assertValueAt(0) { it.isNotEmpty() }
 
 
-        songsO = getBandSongs("")
+        songsO = SongUtil.getBandSongs("")
         songsT = songsO.test()
         songsT.assertComplete()
         songsT.assertValueAt(0) { it.isEmpty() }
-    }
-
-    private fun getBands(): Single<List<Band>> {
-
-        return Single.create<List<Band>> {
-            it.onSuccess(API.getBands())
-        }
-    }
-
-
-    private fun getBandsByName(it: List<Band>, yourBandName: String): Single<MutableList<Band>> {
-        return Observable
-                .just(it)
-                .flatMapIterable { it } //returns an Iterable sequence of values
-                .filter { it.name == yourBandName }
-                .toList() //returns Single<List<Observable> instance!
-    }
-
-    private fun getSongsObservable(): Single<List<Song>> {
-
-        return Single.create<List<Song>> {
-            it.onSuccess(API.getSongs())
-        }
-    }
-
-    private fun getSongsByBand(it: List<Song>, yourBand: Band): Single<MutableList<Song>> {
-        return Observable.just(it)
-                .flatMapIterable { it }
-                .filter { it.bandId == yourBand.bandId }
-                .toList()
-    }
-
-    private fun getBandSongs(bandName: String): Single<List<Song>> {
-        return getBands()
-                .flatMap {
-                    getBandsByName(it, bandName)
-                }.flatMap { filteredBands ->
-                    if (filteredBands.isNotEmpty()) {
-                        getSongsObservable().flatMap {
-                            getSongsByBand(it, filteredBands[0])
-                        }
-                    } else {
-                        Single.just(listOf<Song>())
-                    }
-                }
-
     }
 }
