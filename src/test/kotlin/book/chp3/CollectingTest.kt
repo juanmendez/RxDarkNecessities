@@ -1,6 +1,7 @@
 package book.chp3
 
 import info.juanmendez.rxstories.model.Song
+import io.reactivex.Single
 import org.junit.Test
 
 class CollectingTest {
@@ -82,5 +83,47 @@ class CollectingTest {
          * result
          * The Getaway Dark Necessities We Turn Red The Longest Wave Goodbye Angels Sick Love Go Robot Feasting on the Flowers Detroit This Ticonderoga
          */
+    }
+
+    @Test
+    fun `lets combine single song-observables into one list`() {
+
+        //concatWith by itself returns flowables, our collect turns them into a single!
+        val songsFlowable = Single.just(mutableListOf<Song>())
+                .concatWith(
+                        SongUtil.getSongsSingle(0, 10).map {
+                            it.toMutableList()
+                        })
+                .concatWith(
+                        SongUtil.getSongsSingle(10, 20).map {
+                            it.toMutableList()
+                        })
+                .concatWith(
+                        SongUtil.getSongsSingle(21, 22).map {
+                            //concatWith, requires to keep up with the same type
+                            //so we wanted to only show the first one, but needs to be wrapped
+                            //inside a mutable list
+                            mutableListOf(it.first())
+                        }
+                )
+
+        //this test when subscribed gets emitted each list, starting from empty, to a list with one element
+        val flowableTest = songsFlowable.test()
+
+        //this test gets all elements
+        val singleTest = songsFlowable.collect({
+            mutableListOf<Song>()
+        }, { allItems, lastItems ->
+            allItems.addAll(lastItems)
+        }).test()
+
+        flowableTest.assertComplete()
+        flowableTest.assertValueCount(4)
+
+        singleTest.assertComplete()
+        singleTest.assertValueCount(1)
+        singleTest.assertValueAt(0) {
+            it.size == 21
+        }
     }
 }
