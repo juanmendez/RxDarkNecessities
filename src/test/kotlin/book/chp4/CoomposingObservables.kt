@@ -10,7 +10,6 @@ import org.junit.Test
 class CoomposingObservables {
     companion object {
         const val PAGE_SIZE = 10
-        const val PAGE_LIMIT = 20
     }
 
     private lateinit var songsObservable: Single<List<Song>>
@@ -24,8 +23,7 @@ class CoomposingObservables {
     @Test
     fun `get all songs incrementally`() {
         val size = songsObservable.blockingGet().size
-        val test =
-                getSongsIncrementally(1)
+        val test = getSongsIncrementally(1)
                         .collect({ mutableListOf<Song>() },
                                 { concatList, list ->
                                     concatList.addAll(list)
