@@ -10,7 +10,6 @@ import org.junit.Test
 class CoomposingObservables {
     companion object {
         const val PAGE_SIZE = 10
-        const val PAGE_LIMIT = 20
     }
 
     private lateinit var songsObservable: Single<List<Song>>
