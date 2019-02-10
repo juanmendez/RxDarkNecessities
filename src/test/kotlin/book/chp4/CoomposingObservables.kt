@@ -23,12 +23,16 @@ class CoomposingObservables {
     @Test
     fun `get all songs incrementally`() {
         val size = songsObservable.blockingGet().size
+
+        //flowable emits multiple times, so we collect all values using `collect`
+        //which by the ways turns the flowable into a single observable
         val test = getSongsIncrementally(1)
                         .collect({ mutableListOf<Song>() },
                                 { concatList, list ->
                                     concatList.addAll(list)
                                 }).test()
 
+        //did we collect all songs?
         test.assertValue {
             it.size == size
         }
@@ -53,17 +57,16 @@ class CoomposingObservables {
     }
 
     /**
-     *
-     * Deferred is required, if not in place then every flow can execute at once.
-     * getSongsByPage implements its own deferred operation.
-     *
-     * finished helps to keep track when the list gets empty
+     * Deferred is applied here and in getSongsByPage because these are hot observables
+     * Which means they execute even if not being subscribed, and to avoid that we
+     * use the `defer` operator to execute once the observable is part of the subscription
      */
     fun getSongsIncrementally(pageStartAt: Int, finished: Boolean = false): Flowable<MutableList<Song>> {
         var listEmpty = finished
 
         return getSongsByPage(pageStartAt)
                 .doOnNext {
+                    //we need to stop recursion, or it can get out of hands
                     listEmpty = it.isEmpty()
                 }
                 .concatWith(
