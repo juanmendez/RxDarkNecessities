@@ -34,5 +34,13 @@ class API {
                         Song(it[0].toInt(), it[1], it[2], it[3].toInt(), it[4].toInt())
                     }
         }
+
+        fun getSongsByRange(start: Int, end: Int): List<Song> {
+            val songs = API.getSongs().toMutableList()
+            val endsAt: Int = Math.min(end, songs.size)
+            val startsAt: Int = Math.min(start, endsAt)
+
+            return songs.subList(startsAt, endsAt)
+        }
     }
 }
