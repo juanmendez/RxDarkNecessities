@@ -52,8 +52,7 @@ class FixingErrorResultsTest {
     fun getAlbums(band: Band, makeErrorAt: Int): Single<MutableList<Album>> {
         var index = 0
 
-        return Observable
-                .just(albums)
+        return Observable.just(albums)
                 .flatMapIterable { it }
                 .filter {
                     it.bandId == band.bandId
@@ -67,7 +66,9 @@ class FixingErrorResultsTest {
                 }.doAfterNext {
                     index++
                 }.onErrorResumeNext(
-                        Observable.just(Album(0, 0, "", 2019, ""))
+                        getAlbumFromError()
                 ).toList()
     }
+
+    private fun getAlbumFromError() = Observable.just(Album(0, 0, "", 2019, ""))
 }
